@@ -353,16 +353,6 @@ function Library:RemoveFromRegistry(Instance)
 end;
 
 function Library:UpdateColorsUsingRegistry()
-    -- TODO: Could have an 'active' list of objects
-    -- where the active list only contains Visible objects.
-
-    -- IMPL: Could setup .Changed events on the AddToRegistry function
-    -- that listens for the 'Visible' propert being changed.
-    -- Visible: true => Add to active list, and call UpdateColors function
-    -- Visible: false => Remove from active list.
-
-    -- The above would be especially efficient for a rainbow menu color or live color-changing.
-
     for Idx, Object in next, Library.Registry do
         for Property, ColorIdx in next, Object.Properties do
             if type(ColorIdx) == 'string' then
@@ -375,18 +365,15 @@ function Library:UpdateColorsUsingRegistry()
 end;
 
 function Library:GiveSignal(Signal)
-    -- Only used for signals not attached to library instances, as those should be cleaned up on object destruction by Roblox
     table.insert(Library.Signals, Signal)
 end
 
 function Library:Unload()
-    -- Unload all of the signals
     for Idx = #Library.Signals, 1, -1 do
         local Connection = table.remove(Library.Signals, Idx)
         Connection:Disconnect()
     end
 
-     -- Call our unload callback, maybe to undo some hooks etc
     if Library.OnUnload then
         Library.OnUnload()
     end
@@ -411,7 +398,6 @@ do
 
     function Funcs:AddColorPicker(Idx, Info)
         local ToggleLabel = self.TextLabel;
-        -- local Container = self.Container;
 
         assert(Info.Default, 'AddColorPicker: Missing default value.');
 
@@ -442,7 +428,6 @@ do
             Parent = ToggleLabel;
         });
 
-        -- Transparency image taken from https://github.com/matas3535/SplixPrivateDrawingLibrary/blob/main/Library.lua cus i'm lazy
         local CheckerFrame = Library:Create('ImageLabel', {
             BorderSizePixel = 0;
             Size = UDim2.new(0, 27, 0, 13);
@@ -451,11 +436,6 @@ do
             Visible = not not Info.Transparency;
             Parent = DisplayFrame;
         });
-
-        -- 1/16/23
-        -- Rewrote this to be placed inside the Library ScreenGui
-        -- There was some issue which caused RelativeOffset to be way off
-        -- Thus the color picker would never show
 
         local PickerFrameOuter = Library:Create('Frame', {
             Name = 'Color';
@@ -659,12 +639,11 @@ do
             Position = UDim2.fromOffset(5, 5);
             TextXAlignment = Enum.TextXAlignment.Left;
             TextSize = 14;
-            Text = ColorPicker.Title,--Info.Default;
+            Text = ColorPicker.Title,
             TextWrapped = false;
             ZIndex = 16;
             Parent = PickerFrameInner;
         });
-
 
         local ContextMenu = {}
         do
@@ -779,7 +758,6 @@ do
                 end
                 ColorPicker:SetValueRGB(Library.ColorClipboard)
             end)
-
 
             ContextMenu:AddOption('Copy HEX', function()
                 pcall(setclipboard, ColorPicker.Value:ToHex())
@@ -1010,7 +988,7 @@ do
         local KeyPicker = {
             Value = Info.Default;
             Toggled = false;
-            Mode = Info.Mode or 'Toggle'; -- Always, Toggle, Hold
+            Mode = Info.Mode or 'Toggle'; 
             Type = 'KeyPicker';
             Callback = Info.Callback or function(Value) end;
             ChangedCallback = Info.ChangedCallback or function(New) end;
@@ -1404,7 +1382,6 @@ do
     end;
 
     function Funcs:AddButton(...)
-        -- TODO: Eventually redo this
         local Button = {};
         local function ProcessButtonParams(Class, Obj, ...)
             local Props = select(1, ...)
@@ -1550,7 +1527,6 @@ do
             end
             return self
         end
-
 
         function Button:AddButton(...)
             local SubButton = {}
@@ -1759,28 +1735,20 @@ do
             end);
         end
 
-        -- https://devforum.roblox.com/t/how-to-make-textboxes-follow-current-cursor-position/1368429/6
-        -- thank you nicemike40 :)
-
         local function Update()
             local PADDING = 2
             local reveal = Container.AbsoluteSize.X
 
             if not Box:IsFocused() or Box.TextBounds.X <= reveal - 2 * PADDING then
-                -- we aren't focused, or we fit so be normal
                 Box.Position = UDim2.new(0, PADDING, 0, 0)
             else
-                -- we are focused and don't fit, so adjust position
                 local cursor = Box.CursorPosition
                 if cursor ~= -1 then
-                    -- calculate pixel width of text from start to cursor
                     local subtext = string.sub(Box.Text, 1, cursor-1)
                     local width = TextService:GetTextSize(subtext, Box.TextSize, Box.Font, Vector2.new(math.huge, math.huge)).X
 
-                    -- check if we're inside the box with the cursor
                     local currentCursorPos = Box.Position.X.Offset + width
 
-                    -- adjust if necessary
                     if currentCursorPos < PADDING then
                         Box.Position = UDim2.fromOffset(PADDING-width, 0)
                     elseif currentCursorPos > reveal - PADDING - 1 then
@@ -1926,7 +1894,7 @@ do
 
         ToggleRegion.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
-                Toggle:SetValue(not Toggle.Value) -- Why was it not like this from the start?
+                Toggle:SetValue(not Toggle.Value)
                 Library:AttemptSave();
             end;
         end);
@@ -2147,10 +2115,10 @@ do
         return Slider;
     end;
 
-    -- NEW: MultiSlider element - two sliders next to each other
+    -- MULTI SLIDER - 2 sliders in one, side by side
     function Funcs:AddMultiSlider(Idx, Info)
-        assert(Info.DefaultLeft, 'AddMultiSlider: Missing left default value.');
-        assert(Info.DefaultRight, 'AddMultiSlider: Missing right default value.');
+        assert(Info.DefaultLeft, 'AddMultiSlider: Missing default value for left slider.');
+        assert(Info.DefaultRight, 'AddMultiSlider: Missing default value for right slider.');
         assert(Info.Text, 'AddMultiSlider: Missing slider text.');
         assert(Info.Min, 'AddMultiSlider: Missing minimum value.');
         assert(Info.Max, 'AddMultiSlider: Missing maximum value.');
@@ -2162,15 +2130,16 @@ do
             Min = Info.Min;
             Max = Info.Max;
             Rounding = Info.Rounding;
-            MaxSize = 110; -- Half of original (232/2 ≈ 110)
+            MaxSize = 110; -- Half of normal slider max size (232/2 = 116, but we need room for gap)
+            Gap = 12; -- Gap between sliders
             Type = 'MultiSlider';
-            Callback = Info.Callback or function(LeftVal, RightVal) end;
+            Callback = Info.Callback or function(LeftValue, RightValue) end;
         };
 
         local Groupbox = self;
         local Container = Groupbox.Container;
 
-        -- Title label
+        -- Title (if not compact)
         if not Info.Compact then
             Library:CreateLabel({
                 Size = UDim2.new(1, 0, 0, 10);
@@ -2185,19 +2154,19 @@ do
             Groupbox:AddBlank(3);
         end
 
-        -- Main container for both sliders
+        -- Main container frame for both sliders
         local MultiSliderContainer = Library:Create('Frame', {
             BackgroundTransparency = 1;
-            Size = UDim2.new(1, -4, 0, 30);
+            Size = UDim2.new(1, -4, 0, 13);
             ZIndex = 5;
             Parent = Container;
         });
 
-        -- Left slider
+        -- LEFT SLIDER
         local LeftSliderOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
-            Size = UDim2.new(0.5, -3, 0, 13);
+            Size = UDim2.new(0.5, -(MultiSlider.Gap/2), 1, 0);
             Position = UDim2.new(0, 0, 0, 0);
             ZIndex = 5;
             Parent = MultiSliderContainer;
@@ -2249,7 +2218,7 @@ do
 
         local LeftDisplayLabel = Library:CreateLabel({
             Size = UDim2.new(1, 0, 1, 0);
-            TextSize = 12;
+            TextSize = 14;
             Text = '0';
             ZIndex = 9;
             Parent = LeftSliderInner;
@@ -2260,12 +2229,12 @@ do
             { BorderColor3 = 'Black' }
         );
 
-        -- Right slider
+        -- RIGHT SLIDER
         local RightSliderOuter = Library:Create('Frame', {
             BackgroundColor3 = Color3.new(0, 0, 0);
             BorderColor3 = Color3.new(0, 0, 0);
-            Size = UDim2.new(0.5, -3, 0, 13);
-            Position = UDim2.new(0.5, 3, 0, 0);
+            Size = UDim2.new(0.5, -(MultiSlider.Gap/2), 1, 0);
+            Position = UDim2.new(0.5, MultiSlider.Gap/2, 0, 0);
             ZIndex = 5;
             Parent = MultiSliderContainer;
         });
@@ -2316,7 +2285,7 @@ do
 
         local RightDisplayLabel = Library:CreateLabel({
             Size = UDim2.new(1, 0, 1, 0);
-            TextSize = 12;
+            TextSize = 14;
             Text = '0';
             ZIndex = 9;
             Parent = RightSliderInner;
@@ -2327,53 +2296,35 @@ do
             { BorderColor3 = 'Black' }
         );
 
-        -- Value labels
-        local LeftValueLabel = Library:CreateLabel({
-            Size = UDim2.new(0.5, -3, 0, 15);
-            Position = UDim2.new(0, 0, 1, 2);
-            TextSize = 12;
-            Text = Info.LeftName or 'Left: ' .. Info.DefaultLeft;
-            TextXAlignment = Enum.TextXAlignment.Left;
-            ZIndex = 5;
-            Parent = MultiSliderContainer;
-        });
-
-        local RightValueLabel = Library:CreateLabel({
-            Size = UDim2.new(0.5, -3, 0, 15);
-            Position = UDim2.new(0.5, 3, 1, 2);
-            TextSize = 12;
-            Text = Info.RightName or 'Right: ' .. Info.DefaultRight;
-            TextXAlignment = Enum.TextXAlignment.Left;
-            ZIndex = 5;
-            Parent = MultiSliderContainer;
-        });
-
-        if type(Info.Tooltip) == 'string' then
-            Library:AddToolTip(Info.Tooltip, MultiSliderContainer)
+        -- Tooltips
+        if type(Info.TooltipLeft) == 'string' then
+            Library:AddToolTip(Info.TooltipLeft, LeftSliderOuter)
+        end
+        if type(Info.TooltipRight) == 'string' then
+            Library:AddToolTip(Info.TooltipRight, RightSliderOuter)
         end
 
-        function MultiSlider:UpdateColors()
-            LeftFill.BackgroundColor3 = Library.AccentColor;
-            LeftFill.BorderColor3 = Library.AccentColorDark;
-            RightFill.BackgroundColor3 = Library.AccentColor;
-            RightFill.BorderColor3 = Library.AccentColorDark;
-        end;
-
+        -- Display functions
         function MultiSlider:Display()
             local Suffix = Info.Suffix or '';
+            
+            -- Left display
+            if Info.Compact then
+                LeftDisplayLabel.Text = 'L: ' .. MultiSlider.LeftValue .. Suffix
+            else
+                LeftDisplayLabel.Text = string.format('%s%s', MultiSlider.LeftValue, Suffix);
+            end
 
-            -- Update display labels
-            LeftDisplayLabel.Text = MultiSlider.LeftValue .. Suffix;
-            RightDisplayLabel.Text = MultiSlider.RightValue .. Suffix;
-
-            -- Update value labels
-            LeftValueLabel.Text = (Info.LeftName or 'Left: ') .. MultiSlider.LeftValue .. Suffix;
-            RightValueLabel.Text = (Info.RightName or 'Right: ') .. MultiSlider.RightValue .. Suffix;
-
-            -- Calculate positions
             local LeftX = math.ceil(Library:MapValue(MultiSlider.LeftValue, MultiSlider.Min, MultiSlider.Max, 0, MultiSlider.MaxSize));
             LeftFill.Size = UDim2.new(0, LeftX, 1, 0);
             LeftHideBorderRight.Visible = not (LeftX == MultiSlider.MaxSize or LeftX == 0);
+
+            -- Right display
+            if Info.Compact then
+                RightDisplayLabel.Text = 'R: ' .. MultiSlider.RightValue .. Suffix
+            else
+                RightDisplayLabel.Text = string.format('%s%s', MultiSlider.RightValue, Suffix);
+            end
 
             local RightX = math.ceil(Library:MapValue(MultiSlider.RightValue, MultiSlider.Min, MultiSlider.Max, 0, MultiSlider.MaxSize));
             RightFill.Size = UDim2.new(0, RightX, 1, 0);
@@ -2392,6 +2343,7 @@ do
             return tonumber(string.format('%.' .. MultiSlider.Rounding .. 'f', Value))
         end;
 
+        -- Value getters from position
         function MultiSlider:GetLeftValueFromXOffset(X)
             return Round(Library:MapValue(X, 0, MultiSlider.MaxSize, MultiSlider.Min, MultiSlider.Max));
         end;
@@ -2400,9 +2352,10 @@ do
             return Round(Library:MapValue(X, 0, MultiSlider.MaxSize, MultiSlider.Min, MultiSlider.Max));
         end;
 
+        -- Setter functions
         function MultiSlider:SetLeftValue(Str)
             local Num = tonumber(Str);
-            if (not Num) then return end;
+            if not Num then return end;
             Num = math.clamp(Num, MultiSlider.Min, MultiSlider.Max);
             MultiSlider.LeftValue = Num;
             MultiSlider:Display();
@@ -2412,7 +2365,7 @@ do
 
         function MultiSlider:SetRightValue(Str)
             local Num = tonumber(Str);
-            if (not Num) then return end;
+            if not Num then return end;
             Num = math.clamp(Num, MultiSlider.Min, MultiSlider.Max);
             MultiSlider.RightValue = Num;
             MultiSlider:Display();
@@ -2421,13 +2374,13 @@ do
         end;
 
         function MultiSlider:SetValues(Left, Right)
-            if Left then
+            if Left ~= nil then
                 local Num = tonumber(Left);
                 if Num then
                     MultiSlider.LeftValue = math.clamp(Num, MultiSlider.Min, MultiSlider.Max);
                 end
             end
-            if Right then
+            if Right ~= nil then
                 local Num = tonumber(Right);
                 if Num then
                     MultiSlider.RightValue = math.clamp(Num, MultiSlider.Min, MultiSlider.Max);
@@ -2438,7 +2391,7 @@ do
             Library:SafeCallback(MultiSlider.Changed, MultiSlider.LeftValue, MultiSlider.RightValue);
         end;
 
-        -- Left slider input
+        -- Input handling for LEFT slider
         LeftSliderInner.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
                 local mPos = Mouse.X;
@@ -2466,7 +2419,7 @@ do
             end;
         end);
 
-        -- Right slider input
+        -- Input handling for RIGHT slider
         RightSliderInner.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 and not Library:MouseIsOverOpenedFrame() then
                 local mPos = Mouse.X;
@@ -2495,7 +2448,7 @@ do
         end);
 
         MultiSlider:Display();
-        Groupbox:AddBlank(Info.BlankSize or 20); -- More space for the labels
+        Groupbox:AddBlank(Info.BlankSize or 6);
         Groupbox:Resize();
 
         Options[Idx] = MultiSlider;
@@ -2524,7 +2477,7 @@ do
             Value = Info.Multi and {};
             Multi = Info.Multi;
             Type = 'Dropdown';
-            SpecialType = Info.SpecialType; -- can be either 'Player' or 'Team'
+            SpecialType = Info.SpecialType;
             Callback = Info.Callback or function(Value) end;
         };
 
@@ -3112,8 +3065,6 @@ do
     Library.WatermarkText = WatermarkLabel;
     Library:MakeDraggable(Library.Watermark);
 
-
-
     local KeybindOuter = Library:Create('Frame', {
         AnchorPoint = Vector2.new(0, 0.5);
         BorderColor3 = Color3.new(0, 0, 0);
@@ -3557,7 +3508,6 @@ function Library:CreateWindow(...)
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
                 BorderColor3 = Color3.new(0, 0, 0);
-                -- BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
                 ZIndex = 4;
@@ -3657,7 +3607,6 @@ function Library:CreateWindow(...)
             local BoxInner = Library:Create('Frame', {
                 BackgroundColor3 = Library.BackgroundColor;
                 BorderColor3 = Color3.new(0, 0, 0);
-                -- BorderMode = Enum.BorderMode.Inset;
                 Size = UDim2.new(1, -2, 1, -2);
                 Position = UDim2.new(0, 1, 0, 1);
                 ZIndex = 4;
@@ -3813,7 +3762,6 @@ function Library:CreateWindow(...)
                 Tab:AddBlank(3);
                 Tab:Resize();
 
-                -- Show first tab (number is 2 cus of the UIListLayout that also sits in that instance)
                 if #TabboxButtons:GetChildren() == 2 then
                     Tab:Show();
                 end;
@@ -3840,7 +3788,6 @@ function Library:CreateWindow(...)
             end;
         end);
 
-        -- This was the first tab added, so we show it by default.
         if #TabContainer:GetChildren() == 1 then
             Tab:ShowTab();
         end;
@@ -3873,11 +3820,9 @@ function Library:CreateWindow(...)
         ModalElement.Modal = Toggled;
 
         if Toggled then
-            -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
             Outer.Visible = true;
 
             task.spawn(function()
-                -- TODO: add cursor fade?
                 local State = InputService.MouseIconEnabled;
 
                 local Cursor = Drawing.new('Triangle');
